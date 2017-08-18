@@ -8,12 +8,10 @@ namespace {
     use App\Model\Command\RegisterUserHandler;
     use App\Model\Event\EmailChanged;
     use App\Model\Event\UserRegistered;
-    use App\Model\User;
     use App\Infrastructure\UserRepository;
     use App\Projection\UserProjector;
     use Prooph\Common\Event\ProophActionEventEmitter;
     use Prooph\Common\Messaging\FQCNMessageFactory;
-    use Prooph\EventSourcing\EventStoreIntegration\AggregateTranslator;
     use Prooph\EventStore\ActionEventEmitterEventStore;
     use Prooph\EventStore\Pdo\MySqlEventStore;
     use Prooph\EventStore\Pdo\PersistenceStrategy\MySqlAggregateStreamStrategy;
@@ -24,21 +22,15 @@ namespace {
     use Prooph\ServiceBus\Plugin\Router\CommandRouter;
     use Prooph\ServiceBus\Plugin\Router\EventRouter;
     use Prooph\SnapshotStore\Pdo\PdoSnapshotStore;
-    use Prooph\Snapshotter\SnapshotReadModel;
 
     include "./vendor/autoload.php";
 
     $pdo = new PDO('mysql:dbname=prooph;host=localhost', 'root', '');
-    $eventStore = new MySqlEventStore(
-        new FQCNMessageFactory(),
-        $pdo,
-        new MySqlAggregateStreamStrategy()
-    );
-    $eventStore = new ActionEventEmitterEventStore($eventStore,
-        ($p = new ProophActionEventEmitter())
-    );
+    $eventStore = new MySqlEventStore(new FQCNMessageFactory(), $pdo, new MySqlAggregateStreamStrategy());
+    $eventEmitter = new ProophActionEventEmitter();
+    $eventStore = new ActionEventEmitterEventStore($eventStore, $eventEmitter);
 
-    $eventBus = new EventBus($p);
+    $eventBus = new EventBus($eventEmitter);
     $eventPublisher = new EventPublisher($eventBus);
     $eventPublisher->attachToEventStore($eventStore);
 
@@ -46,16 +38,9 @@ namespace {
     $userRepository = new UserRepository($eventStore, $pdoSnapshotStore);
 
     $projectionManager = new MySqlProjectionManager($eventStore, $pdo);
-    $snapshotReadModel = new SnapshotReadModel(
-        $userRepository,
-        new AggregateTranslator(),
-        $pdoSnapshotStore,
-        [User::class]
-    );
 
     $commandBus = new CommandBus();
     $router = new CommandRouter();
-
     $router->route(RegisterUser::class)->to(new RegisterUserHandler($userRepository));
     $router->route(ChangeEmail::class)->to(new ChangeEmailHandler($userRepository));
     $router->attachToMessageBus($commandBus);

@@ -1,5 +1,5 @@
 {
-    "name": "marcin/proop-test",
+    "name": "mmp4k/prooph-in-action",
     "require": {
         "prooph/service-bus": "^6.0",
         "prooph/event-sourcing": "^5.2",
