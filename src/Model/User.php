@@ -19,8 +19,6 @@ class User extends AggregateRoot
             return;
         }
 
-        $this->email = $newEmail;
-
         $this->recordThat(EmailChanged::occur($this->id, [
             'email' => $newEmail
         ]));
@@ -29,9 +27,6 @@ class User extends AggregateRoot
     static public function registerWithData(string $id, string $email, string $password): self
     {
         $obj = new self;
-        $obj->id = $id;
-        $obj->email = $email;
-        $obj->password = $password;
         $obj->recordThat(UserRegistered::occur($id, [
             'email' => $email,
             'password' => $password
